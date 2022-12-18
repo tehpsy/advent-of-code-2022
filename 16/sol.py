@@ -4,6 +4,7 @@ import math
 import re
 import functools
 import copy
+import itertools
 
 class Node:
   def __init__(self, id: str, flow: int):
@@ -30,7 +31,7 @@ class Queue:
   def set_value(self, node, value):
     node.value = value
     self.nodes = self.sort(self.nodes)
-    
+
     # source_index = nodes.index(node)
     # dest_index = custom_index(self.nodes, lambda x: (x == None) or (x.value >= value))
     # self.nodes.remove(node)
@@ -118,42 +119,116 @@ def paths(node_map, start_id, history, time_remaining):
     if (node.open or node.flow == 0 or distance > time_remaining - 1): continue
     ret_val.append(paths(node_map, node_id, copy.deepcopy(history), time_remaining - distance))
 
-  print(ret_val)
+  # print(ret_val)
   return ret_val
 
-# def trim(node_map):
-#   for node_id in list(node_map.keys()):
-#     node = node_map[node_id]
-#     if (node.flow == 0):
-#       del node_map[node_id]
-    
+def filter_nodes(node_id, remaining_ids, node_map, time_left):
+  node = node_map[node_id]
+  return list(filter(lambda x: node.distance_map[x] <= time_left - 1, remaining_ids))
+
 def calc(start_node_id, node_map, history, time_left):
   start_node = node_map[start_node_id]
   node_val = start_node.flow * time_left
   history.add(start_node_id)
-  print(f"start_node_id {start_node_id}")
-  print(f"history {history}")
+  # print(f"start_node_id {start_node_id}")
+  # print(f"history {history}")
   sub_vals = list()
-  print(f"node_val {node_val}")
+  # print(f"node_val {node_val}")
   sub_vals.append(node_val)
   for node_id in start_node.distance_map:
     if (node_id in history): continue
     distance = start_node.distance_map[node_id]
     if (distance > time_left - 1): continue
-    print(f"sub {node_id}")
+    # print(f"sub {node_id}")
     sub_val = calc(node_id, node_map, copy.deepcopy(history), time_left - distance - 1)
     sub_vals.append(node_val + sub_val)
 
   return max(sub_vals)
+
+def calc_dual(start_node_id1, start_node_id2, node_map, history, time_left_total, time_left1, time_left2):
+  print(f"calc_dual start_node_id1 {start_node_id1}")
+  print(f"calc_dual start_node_id2 {start_node_id2}")
+  print(f"calc_dual history {history}")
+  print(f"calc_dual time_left_total {time_left_total}")
+  print(f"calc_dual time_left1 {time_left1}")
+  print(f"calc_dual time_left2 {time_left2}")
+  start_node1 = node_map[start_node_id1]
+  start_node2 = node_map[start_node_id2]
+  history.add(start_node_id1)
+  history.add(start_node_id2)
+  remaining_ids = set(start_node1.distance_map.keys()).difference(history)
+  
+  node_val1 = start_node1.flow * time_left_total if time_left1 == 0 else 0
+  node_val2 = start_node2.flow * time_left_total if time_left2 == 0 else 0
+  node_val = node_val1 + node_val2 if start_node1 != start_node2 else node_val1
+
+  sub_vals = list()
+  sub_vals.append(node_val)
+
+  if time_left1 == 0 and time_left2 == 0:
+    choices1 = filter_nodes(start_node_id1, remaining_ids, node_map, time_left_total)
+    choices2 = filter_nodes(start_node_id2, remaining_ids, node_map, time_left_total)
+    for (node_id1, node_id2) in list(itertools.product(choices1, choices2)):
+      if (node_id1 == node_id2): continue
+      print(f"choices: {node_id1} {node_id2}")
+      time1 = start_node1.distance_map[node_id1] + 1
+      time2 = start_node2.distance_map[node_id2] + 1
+      time_min = min(time1, time2)
+      print(f"time1: {time1}")
+      print(f"time2: {time2}")
+      print(f"time_min: {time_min}")
+      sub_val = calc_dual(node_id1, node_id2, node_map, copy.deepcopy(history), time_left_total - time_min, time1 - time_min, time2 - time_min)
+      sub_vals.append(node_val + sub_val)
+
+  elif time_left1 == 0:
+    for node_id in filter_nodes(start_node_id1, remaining_ids, node_map, time_left_total):
+      print(f"choice 1: {node_id}")
+      time1 = start_node1.distance_map[node_id] + 1
+      time2 = time_left2
+      time_min = min(time1, time2)
+      sub_val = calc_dual(node_id, start_node_id2, node_map, copy.deepcopy(history), time_left_total - time_min, time1 - time_min, time2 - time_min)
+      sub_vals.append(node_val + sub_val)
+  elif time_left2 == 0:
+    for node_id in filter_nodes(start_node_id2, remaining_ids, node_map, time_left_total):
+      print(f"choice 2: {node_id}")
+      time1 = time_left1
+      time2 = start_node2.distance_map[node_id] + 1
+      time_min = min(time1, time2)
+      sub_val = calc_dual(start_node_id1, node_id, node_map, copy.deepcopy(history), time_left_total - time_min, time1 - time_min, time2 - time_min)
+      sub_vals.append(node_val + sub_val)
+
+  return max(sub_vals)
+
+# def calc(start_node_id, node_map, history, time_left):
+#   start_node = node_map[start_node_id]
+#   node_val = start_node.flow * time_left
+#   history.add(start_node_id)
+#   print(f"start_node_id {start_node_id}")
+#   print(f"history {history}")
+#   return_values = list()
+#   print(f"node_val {node_val}")
+
+
+#   for node_id in start_node.distance_map:
+#     if (node_id in history): continue
+#     distance = start_node.distance_map[node_id]
+#     if (distance > time_left - 1): continue
+#     print(f"sub {node_id}")
+
+#     return_values =
+#     sub_vals = calc(node_id, node_map, copy.deepcopy(history), time_left - distance - 1)
+#     return_values.append(node_val + sub_val)
+
+#   return_values.append(node_val)
+#   return return_values
 
 if __name__ == '__main__':
     with open('input.txt') as f:
       lines = f.read().split('\n')
       node_map = dict(map(create_node, lines))
       connect_nodes(node_map, dict(map(get_connection_ids, lines)))
-      populate_distances(node_map) 
-      # trim(node_map)
+      populate_distances(node_map)
       print(node_map)
-      # paths(node_map, "AA", set(), 30)
-      print(calc("AA", node_map, set(), 5))
-      
+
+      # print(calc("AA", node_map, set(), 30))
+      print(calc_dual("AA", "AA", node_map, set(), 5, 0, 0))
