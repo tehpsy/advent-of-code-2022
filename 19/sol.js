@@ -30,9 +30,10 @@ for (const [index, val] of originalVals.entries()) {
 
   if (newIndexUnwrapped == 0 && val != 0) {
     newIndexUnwrapped = originalVals.length - 1;
-  } else if (newIndexUnwrapped == originalVals.length - 1 && val != 0) {
-    newIndexUnwrapped = 0;
   }
+  //  else if (newIndexUnwrapped == originalVals.length - 1 && val != 0) {
+  //   newIndexUnwrapped = 0;
+  // }
 
   const newIndex = newIndexUnwrapped % originalVals.length;
   // console.log(`newIndexUnwrapped: ${newIndexUnwrapped}`);
@@ -82,6 +83,8 @@ for (const [index, val] of originalVals.entries()) {
 console.log(arr)
 const originalIndexOfZero = originalVals.findIndex((v) => v == 0);
 const currentIndexOfZero = indexMap[originalIndexOfZero];
+
+console.log(currentIndexOfZero)
 
 const part1 = [1000, 2000, 3000].reduce((accumulator, currentValue) => {
   return accumulator += arr[(currentValue + currentIndexOfZero) % arr.length];
